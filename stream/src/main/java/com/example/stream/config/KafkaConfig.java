@@ -16,7 +16,7 @@ public class KafkaConfig {
     @Bean("stream-properties")
     public Properties properties () {
         Properties properties = new Properties();
-        properties.put(StreamsConfig.DEFAULT_KEY_SERDE_CLASS_CONFIG, UUIDSerde.class);
+        properties.put(StreamsConfig.DEFAULT_KEY_SERDE_CLASS_CONFIG, Serdes.StringSerde.class);
         properties.put(StreamsConfig.DEFAULT_VALUE_SERDE_CLASS_CONFIG, MeasurementSerde.class);
         properties.put(StreamsConfig.CLIENT_ID_CONFIG, "client-id-message-stream");
         properties.put(StreamsConfig.APPLICATION_ID_CONFIG, "application-id-stream");
@@ -27,7 +27,7 @@ public class KafkaConfig {
     @Bean("aggregate-properties")
     public Properties aggreGateProperties () {
         Properties properties = new Properties();
-        properties.put(StreamsConfig.DEFAULT_KEY_SERDE_CLASS_CONFIG, UUIDSerde.class);
+        properties.put(StreamsConfig.DEFAULT_KEY_SERDE_CLASS_CONFIG, Serdes.StringSerde.class);
         properties.put(StreamsConfig.DEFAULT_VALUE_SERDE_CLASS_CONFIG, Serdes.DoubleSerde.class);
         properties.put(StreamsConfig.CLIENT_ID_CONFIG, "client-id-aggregate-stream");
         properties.put(StreamsConfig.APPLICATION_ID_CONFIG, "application-id-aggregate");

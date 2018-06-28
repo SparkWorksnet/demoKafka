@@ -1,66 +1,87 @@
 package com.example.produce.schedule;
 
 import com.example.common.Measurement;
-import com.sun.org.apache.bcel.internal.generic.LOOKUPSWITCH;
 import org.apache.kafka.clients.producer.KafkaProducer;
 import org.apache.kafka.clients.producer.ProducerRecord;
 import org.apache.logging.log4j.Logger;
 import org.springframework.beans.factory.annotation.Qualifier;
-import org.springframework.scheduling.annotation.Scheduled;
-import org.springframework.stereotype.Component;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.stereotype.Service;
 
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.Random;
-import java.util.UUID;
+import javax.annotation.PostConstruct;
+import java.io.BufferedReader;
+import java.io.File;
+import java.io.FileReader;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ConcurrentMap;
 
 import static org.apache.logging.log4j.LogManager.getLogger;
 
-@Component
+@Service
 public class MeasurementGenerator {
-    
-    private final KafkaProducer<UUID, Measurement> producer;
-    private final List<UUID> uuids;
-    private Map<UUID, Double> aggregates = new HashMap<>();
-    private Map<UUID, Long> counts = new HashMap<>();
-    
+
+    @Value("${data.devices.path}")
+    private String devicesPath;
+
+    private final KafkaProducer<String, Measurement> producer;
+
     private final Logger LOGGER = getLogger(MeasurementGenerator.class);
-    
-    public MeasurementGenerator(@Qualifier("uuids") List<UUID> uuids, @Qualifier("producer") KafkaProducer<UUID, Measurement> producer) {
+
+    public MeasurementGenerator(@Qualifier("producer") KafkaProducer<String, Measurement> producer) {
         this.producer = producer;
-        this.uuids = uuids;
     }
-    
-    
-    @Scheduled(fixedRate = 1000L)
-    public void sendMeasurements() {
-        for(UUID uuid : uuids) {
-            if (new Random().nextBoolean()) {
-                ProducerRecord<UUID, Measurement> record = recordGenerator("input", uuid, createMeasurement());
-                Double preValue = aggregates.get(uuid);
-                Long preCount = counts.get(uuid);
-                aggregates.put(uuid, (preValue != null) ? preValue + record.value().getReading() : record.value().getReading());
-                counts.put(uuid, (preCount != null) ? (preCount + 1) : 1);
-                LOGGER.info("Aggregate Map key -> " + uuid + " :  value -> " + aggregates.get(uuid).toString());
-                LOGGER.info("Counts  Map key -> " + uuid + " :  value -> " + counts.get(uuid).toString());
-                LOGGER.info("Sending to \"" + record.topic() + "\" -> key : " + record.key() + " - " + record.value());
-                try {
-                    Thread.sleep(1000);
-                } catch (InterruptedException e) {
-                    e.printStackTrace();
-                }
-                producer.send(record);
+
+
+    @PostConstruct
+    public void sendMeasurements() throws Exception {
+        LOGGER.info("Preparing to send messages for devices in path {}", devicesPath);
+
+        File dir = new File(devicesPath);
+        final ConcurrentMap<String, BufferedReader> files = new ConcurrentHashMap<>();
+        if (dir.isDirectory()) {
+            for (final File file : dir.listFiles()) {
+                LOGGER.info("file:" + file.getName());
+                final BufferedReader br = new BufferedReader(new FileReader(file));
+                files.put(file.getName(), br);
             }
+            LOGGER.info("!!!Files have been opened successfully!!!");
+        } else {
+            LOGGER.info("!!!{} is not directory!!!", dir.toString());
+
         }
+        do {
+            for (final String key : files.keySet()) {
+                final BufferedReader bufferedReader = files.get(key);
+                final String line = bufferedReader.readLine();
+                if (line != null) {
+                    final String[] parts = line.split(",");
+
+                    ProducerRecord<String, Measurement> record = recordGenerator(
+                            "input",
+                            parts[0],
+                            createMeasurement(Long.parseLong(parts[1]),
+                                    Double.parseDouble(parts[2])));
+                    try {
+                        Thread.sleep(1000);
+                    } catch (InterruptedException e) {
+                        e.printStackTrace();
+                    }
+                    LOGGER.info("topic: " + record.topic() + ", key: " + record.key() + ", value:" + record.value());
+                    producer.send(record);
+                } else {
+                    files.remove(key);
+                }
+            }
+        } while (!files.isEmpty());
+        LOGGER.info("!!!Data have been loaded successfully!!!");
     }
-    
-    private ProducerRecord<UUID, Measurement> recordGenerator(String topic, UUID uuid, Measurement measurment) {
-        return new ProducerRecord<UUID, Measurement>(topic, uuid, measurment);
+
+    private ProducerRecord<String, Measurement> recordGenerator(String topic, String uri, Measurement measurment) {
+        return new ProducerRecord<String, Measurement>(topic, uri, measurment);
     }
-    
-    
-    private Measurement createMeasurement() {
-        return new Measurement(new Random().nextDouble(), System.currentTimeMillis());
+
+
+    private Measurement createMeasurement(Long timestamp, Double reading) {
+        return new Measurement(reading, timestamp);
     }
 }

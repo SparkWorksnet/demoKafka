@@ -43,9 +43,9 @@ public class AggregatesStream {
     @PostConstruct
     public void runStream() {
         final StreamsBuilder builder = new StreamsBuilder();
-        KStream<UUID, Measurement> input = builder.stream(INPUT_TOPIC, Consumed.with(new UUIDSerde(), new MeasurementSerde()));
+        KStream<String, Measurement> input = builder.stream(INPUT_TOPIC, Consumed.with(new Serdes.StringSerde(), new MeasurementSerde()));
         
-        KStream<UUID, Long> countByKey5min = input
+        KStream<String, Long> countByKey5min = input
                 .groupByKey()
                 .windowedBy(TimeWindows.of(TimeUnit.MINUTES.toMillis(5)))
                 .count()
@@ -53,9 +53,9 @@ public class AggregatesStream {
                 .selectKey((key, value) -> key.key());
     
     
-        KStream<UUID, Double> aggregateByKey5min = input
+        KStream<String, Double> aggregateByKey5min = input
                 .mapValues(Measurement::getReading)
-                .groupByKey(Serialized.with(new UUIDSerde(), Serdes.Double()))
+                .groupByKey(Serialized.with(new Serdes.StringSerde(), Serdes.Double()))
                 .windowedBy(TimeWindows.of(TimeUnit.MINUTES.toMillis(5)))
                 .aggregate(
                         new Initializer<Double>() { /* initializer */
@@ -64,17 +64,17 @@ public class AggregatesStream {
                                 return 0.0;
                             }
                         },
-                        new Aggregator<UUID, Double, Double>() {
+                        new Aggregator<String, Double, Double>() {
                             @Override
-                            public Double apply(UUID key, Double value, Double aggregate) {
+                            public Double apply(String key, Double value, Double aggregate) {
                                 return aggregate + value;
                             }
                         },
-                        Materialized.<UUID, Double, WindowStore<Bytes, byte[]>>as(AGGREGATE_5MIN_STORE)
+                        Materialized.<String, Double, WindowStore<Bytes, byte[]>>as(AGGREGATE_5MIN_STORE)
                 ).toStream().selectKey((key, value) -> key.key());
         
-        countByKey5min.to(COUNTS_5MIN, Produced.with(new UUIDSerde(), Serdes.Long()));
-        aggregateByKey5min.to(AGGREGATES_5MIN, Produced.with(new UUIDSerde(), Serdes.Double()));
+        countByKey5min.to(COUNTS_5MIN, Produced.with(new Serdes.StringSerde(), Serdes.Long()));
+        aggregateByKey5min.to(AGGREGATES_5MIN, Produced.with(new Serdes.StringSerde(), Serdes.Double()));
         
         Topology topology = builder.build();
         System.out.println(topology.describe());
