@@ -3,8 +3,8 @@
 	xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
 	<modelVersion>4.0.0</modelVersion>
 
-	<groupId>com.example</groupId>
-	<artifactId>demo</artifactId>
+	<groupId>net.sparkworks.stream</groupId>
+	<artifactId>demo-kafka</artifactId>
 	<version>0.0.1-SNAPSHOT</version>
     <modules>
         <module>common</module>
@@ -14,8 +14,9 @@
     </modules>
     <packaging>pom</packaging>
 
-	<name>demo</name>
-	<description>Demo project for Spring Boot</description>
+	<name>SparkWorks :: Apache Kafka Demo</name>
+
+	<description>Demo project for Kafka in Spring Boot</description>
 
 	<parent>
 		<groupId>org.springframework.boot</groupId>
