@@ -39,7 +39,7 @@ public class KafkaConfig {
     public Properties averageProperties() {
         Properties properties = new Properties();
         properties.put(StreamsConfig.DEFAULT_KEY_SERDE_CLASS_CONFIG, Serdes.StringSerde.class);
-        properties.put(StreamsConfig.DEFAULT_VALUE_SERDE_CLASS_CONFIG, MeasurementSerde.class);
+        properties.put(StreamsConfig.DEFAULT_VALUE_SERDE_CLASS_CONFIG, Serdes.DoubleSerde.class);
         properties.put(StreamsConfig.CLIENT_ID_CONFIG, "client-id-average");
         properties.put(StreamsConfig.APPLICATION_ID_CONFIG, "application-id-average");
         properties.put(StreamsConfig.BOOTSTRAP_SERVERS_CONFIG, "localhost:9092");

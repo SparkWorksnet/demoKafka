@@ -3,10 +3,7 @@ package com.example.stream;
 import com.example.common.Measurement;
 import com.example.common.serdes.MeasurementSerde;
 import org.apache.kafka.common.serialization.Serdes;
-import org.apache.kafka.streams.Consumed;
-import org.apache.kafka.streams.KafkaStreams;
-import org.apache.kafka.streams.StreamsBuilder;
-import org.apache.kafka.streams.Topology;
+import org.apache.kafka.streams.*;
 import org.apache.kafka.streams.kstream.*;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.stereotype.Component;
@@ -27,27 +24,25 @@ public class AverageStream {
     public AverageStream(@Qualifier("average-properties") Properties properties) {
         this.properties = properties;
     }
-    
+
     @PostConstruct
     public void runStream() {
         final StreamsBuilder builder = new StreamsBuilder();
         KStream<String, Measurement> input = builder.stream(DEVICE_DATA_TOPIC, Consumed.with(new Serdes.StringSerde(), new MeasurementSerde()));
-        
+
         input
+                .mapValues(Measurement::getReading)
                 .groupByKey()
                 .windowedBy(TimeWindows.of(TimeUnit.MINUTES.toMillis(5)))
-                .reduce(new Reducer<Measurement>() {
+                .reduce(new Reducer<Double>() {
                     @Override
-                    public Measurement apply(Measurement measurement, Measurement measurement1) {
-                        Measurement reduced = new Measurement();
-                        reduced.setReading((measurement.getReading() + measurement1.getReading())/2);
-                        reduced.setTimestamp((measurement.getTimestamp() < measurement1.getTimestamp()) ? measurement.getTimestamp() : measurement1.getTimestamp());
-                        return reduced;
+                    public Double apply(Double measurement, Double measurement1) {
+                        return (measurement + measurement1) / 2;
+
                     }
                 })
                 .toStream()
-                .selectKey((stringWindowed, aDouble) -> stringWindowed.key())
-                .mapValues(Measurement::getReading)
+                .selectKey((key, value) -> key.key())
                 .to(AVERAGE_5MIN, Produced.with(Serdes.String(), Serdes.Double()));
 
         Topology topology = builder.build();
@@ -55,7 +50,7 @@ public class AverageStream {
         streams = new KafkaStreams(topology, properties);
         streams.start();
     }
-    
+
     @PreDestroy
     public void onDestroy() {
         streams.close();

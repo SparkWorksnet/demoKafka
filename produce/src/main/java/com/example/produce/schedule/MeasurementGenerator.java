@@ -51,6 +51,7 @@ public class MeasurementGenerator {
             LOGGER.info("!!!{} is not directory!!!", dir.toString());
 
         }
+        int counter = 0;
         do {
             for (final String key : files.keySet()) {
                 final BufferedReader bufferedReader = files.get(key);
@@ -63,8 +64,11 @@ public class MeasurementGenerator {
                             parts[0],
                             createMeasurement(Long.parseLong(parts[1]),
                                     Double.parseDouble(parts[2])));
-                    LOGGER.info("topic: " + record.topic() + ", key: " + record.key() + ", value:" + record.value());
                     producer.send(record);
+                    counter++;
+                    if (counter % 10000 == 0) {
+                        LOGGER.info("{} messages sent to {} topic.", counter, DEVICE_DATA_TOPIC);
+                    }
                 } else {
                     files.remove(key);
                 }
