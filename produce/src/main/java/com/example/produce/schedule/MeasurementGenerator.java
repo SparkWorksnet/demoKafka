@@ -23,6 +23,8 @@ public class MeasurementGenerator {
     @Value("${data.devices.path}")
     private String devicesPath;
 
+    private static String DEVICE_DATA_TOPIC = "device-data";
+
     private final KafkaProducer<String, Measurement> producer;
 
     private final Logger LOGGER = getLogger(MeasurementGenerator.class);
@@ -57,15 +59,10 @@ public class MeasurementGenerator {
                     final String[] parts = line.split(",");
 
                     ProducerRecord<String, Measurement> record = recordGenerator(
-                            "input",
+                            DEVICE_DATA_TOPIC,
                             parts[0],
                             createMeasurement(Long.parseLong(parts[1]),
                                     Double.parseDouble(parts[2])));
-                    try {
-                        Thread.sleep(1000);
-                    } catch (InterruptedException e) {
-                        e.printStackTrace();
-                    }
                     LOGGER.info("topic: " + record.topic() + ", key: " + record.key() + ", value:" + record.value());
                     producer.send(record);
                 } else {
@@ -77,7 +74,7 @@ public class MeasurementGenerator {
     }
 
     private ProducerRecord<String, Measurement> recordGenerator(String topic, String uri, Measurement measurment) {
-        return new ProducerRecord<String, Measurement>(topic, uri, measurment);
+        return new ProducerRecord<String, Measurement>(topic, null, measurment.getTimestamp(), uri, measurment);
     }
 
 
